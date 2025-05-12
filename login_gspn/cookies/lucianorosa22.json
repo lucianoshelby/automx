@@ -1,0 +1,86 @@
+[
+    {
+        "name": "WMONID",
+        "value": "gwxZMl7p-XB",
+        "domain": "biz6.samsungcsportal.com",
+        "path": "/",
+        "expires": 1771084150.112365,
+        "size": 17,
+        "httpOnly": false,
+        "secure": false,
+        "session": false,
+        "sameSite": null
+    },
+    {
+        "name": "WMONID",
+        "value": "NWJznH92KF-",
+        "domain": "skp.samsungcsportal.com",
+        "path": "/",
+        "expires": 1771363918.580692,
+        "size": 17,
+        "httpOnly": false,
+        "secure": false,
+        "session": false,
+        "sameSite": null
+    },
+    {
+        "name": "visid_incap_2651221",
+        "value": "u1gVoeNZRVOGnYzcOh99fycts2cAAAAAQUIPAAAAAADSxnD8y+p6Y5ba+2mhQvQq",
+        "domain": ".samsungcsportal.com",
+        "path": "/",
+        "expires": 1771255784.580793,
+        "size": 83,
+        "httpOnly": true,
+        "secure": false,
+        "session": false,
+        "sameSite": null
+    },
+    {
+        "name": "gspn_saveid",
+        "value": "lucianorosa22",
+        "domain": "gspn6.samsungcsportal.com",
+        "path": "/",
+        "expires": 1749317387,
+        "size": 24,
+        "httpOnly": false,
+        "secure": false,
+        "session": false,
+        "sameSite": null
+    },
+    {
+        "name": "AMOBGSPNSESSIONID",
+        "value": "UNGw8ew0QTF8qamO6a4-4vGDEKkczvy80YoO5PCZrrK6DvSK7Oay!-1380720183!2090926785",
+        "domain": "biz6.samsungcsportal.com",
+        "path": "/",
+        "expires": -1,
+        "size": 92,
+        "httpOnly": true,
+        "secure": false,
+        "session": true,
+        "sameSite": null
+    },
+    {
+        "name": "AMOPGSPNSESSIONID",
+        "value": "l-uw8gyLFj6x4KiLT7PQfQSR8C6jhitgRq52rWBBPCalMHcLD-kL!-1364531195!1980433350",
+        "domain": "gspn6.samsungcsportal.com",
+        "path": "/",
+        "expires": -1,
+        "size": 92,
+        "httpOnly": true,
+        "secure": false,
+        "session": true,
+        "sameSite": null
+    },
+    {
+        "name": "WMONID",
+        "value": "-PT9Jq-YNGa",
+        "domain": "gspn6.samsungcsportal.com",
+        "path": "/",
+        "expires": 1778243411.804535,
+        "size": 17,
+        "httpOnly": false,
+        "secure": false,
+        "session": false,
+        "sameSite": null
+    }
+]

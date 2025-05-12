@@ -1,0 +1,1908 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-96x96.png') }}" sizes="96x96">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+    <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoMX</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    
+    <style>
+        body {
+            background-color: #0d1b2a;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 2rem;
+        }
+        .card {
+            background-color: #202C39;
+            color: #FFFFFF;
+            max-width: 600px;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+            padding: 2rem;
+            width: 100%;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            position: relative;
+        }
+        .logo-container img {
+    max-width: 400px; /* Limita a largura do logo */
+    width: 100%; /* Faz o logo ser responsivo */
+    height: auto; /* Mantém a proporção */
+}
+.logo-container {
+    margin-bottom: 5rem; /* Espaço entre o logo e o card */
+    text-align: center; /* Centraliza a imagem */
+}
+    
+        .card.visible {
+            opacity: 1;
+            transform: translateY(0);
+            position: relative;
+        }
+        .btn-custom {
+            background-color: #415a77;
+            border-color: #415a77;
+            color: #ffffff;
+            transition: background-color 0.3s ease;
+        }
+        .btn-custom:hover:not(.disabled) {
+            background-color: #778da9;
+            border-color: #778da9;
+        }
+        .btn-custom.disabled {
+            background-color: #6b7280;
+            border-color: #6b7280;
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .form-control, select {
+            background-color: #ffffff;
+            border: 1px solid #415a77;
+            color: #0d1b2a;
+            border-radius: 0.375rem;
+            padding: 0.5rem 1rem;
+            width: 100%;
+        }
+        .form-control:focus, select:focus {
+            box-shadow: none;
+            border-color: #ffffff;
+            outline: none;
+        }
+        .part-entry span {
+        flex: 15; /* Let the description span take more space */
+        }
+        .part-entry {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            align-items: center;
+        }
+        .part-entry select { flex: 1; }
+        .part-entry input { flex: 1; }
+        .ow-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .ow-checkbox input[type="checkbox"] {
+            width: 1.5em;
+            height: 1.5em;
+        }
+        .loading-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .loading-icon {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes fadeInUp {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        .part-entry.entering {
+            animation: fadeInUp 0.5s ease forwards;
+        }
+        .alert {
+            background-color: #f87171;
+            color: #fff;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        .error-message {
+            color: #f87171;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            text-align: center;
+        }
+        .gspn-status-container {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    }
+
+    .gspn-status-text {
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .gspn-status-indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        animation: pulse 1.5s infinite ease-in-out;
+    }
+
+    .gspn-status-indicator.logged-in {
+        background-color: #22c55e; /* Verde */
+    }
+
+    .gspn-status-indicator.logged-out {
+        background-color: #ef4444; /* Vermelho */
+    }
+
+    .gspn-login-dropdown {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        background-color: #1e293b;
+        border: 1px solid #415a77;
+        border-radius: 0.375rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+        min-width: 200px;
+        max-height: 200px;
+        overflow-y: auto;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-10px);
+        transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+        z-index: 10;
+    }
+
+    .gspn-login-dropdown.visible {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+
+    .gspn-login-dropdown ul {
+        list-style: none;
+        margin: 0;
+        padding: 0.5rem;
+    }
+
+    .gspn-login-dropdown li {
+        padding: 0.5rem;
+        font-size: 0.875rem;
+        color: #ffffff;
+        border-bottom: 1px solid #415a77;
+    }
+
+    .gspn-login-dropdown li:last-child {
+        border-bottom: none;
+    }
+
+    .gspn-reload-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .gspn-reload-btn:hover svg {
+        color: #778da9;
+    }
+
+    @keyframes pulse {
+        0% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.2); opacity: 0.7; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+        
+    </style>
+</head>
+<body>
+    <!-- Menu Principal -->
+    <div class="logo-container">
+        <img src="/static/logo_horizontal.png" alt="Logo AutoMX"> 
+    </div>
+    <div class="card visible" id="mainMenu">
+        <h1 class="text-2xl font-bold text-center mb-6">Automações:</h1>
+
+        <div class="flex flex-col gap-4">
+            <button id="syncPartsBtn" class="btn-custom px-4 py-2 rounded-lg">Sincronizar Peças</button>
+            <button id="requestSawBtn" class="btn-custom px-4 py-2 rounded-lg">Solicitar SAW</button>
+            <button id="requestPartsBtn" class="btn-custom px-4 py-2 rounded-lg">Requisitar Peças do Orçamento</button>
+            <button id="vincularOsBtn" class="btn-custom px-4 py-2 rounded-lg">Vincular/Finalizar OS GSPN</button>
+            <button id="manageUsersBtn" class="btn-custom px-4 py-2 rounded-lg mt-2 bg-indigo-600 hover:bg-indigo-700">Logins COS</button>
+        </div>
+    </div>
+    <!-- GSPN Status Indicator -->
+<div class="gspn-status-container">
+    <span class="gspn-status-text">Login GSPN</span>
+    <span class="gspn-status-indicator logged-out"></span>
+    <button class="gspn-reload-btn" title="Atualizar status de login">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-clockwise" viewBox="0 0 16 16">
+            <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/>
+            <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/>
+        </svg>
+    </button>
+    <div class="gspn-login-dropdown">
+        <ul id="gspn-login-list"></ul>
+    </div>
+</div>
+    <div class="card hidden" id="vincularOsCard">
+        <h1 class="text-2xl font-bold text-center mb-6">Vincular / Finalizar OS GSPN</h1>
+
+        <form id="vincularOsForm" class="space-y-6">
+            <div>
+                <label for="vincularOsNumber" class="block text-sm font-medium mb-1">Número da OS (COS)</label>
+                <input type="text" id="vincularOsNumber" name="vincularOsNumber" placeholder="Digite a OS do COS sem espaços" required class="form-control">
+                <p class="text-xs text-gray-400 mt-1">Obrigatório.</p>
+            </div>
+
+            <div class="space-y-4 border-t border-b border-gray-600 py-4">
+                <h2 class="text-lg font-semibold text-center mb-3">Ações a Realizar</h2>
+
+                <label for="toggleGerarOs" class="flex items-center justify-between cursor-pointer p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition">
+                    <span class="font-medium">Gerar nova OS GSPN</span>
+                    <div class="relative">
+                        <input type="checkbox" id="toggleGerarOs" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </div>
+                </label>
+
+                <label id="labelSincronizar" for="toggleSincronizar" class="flex items-center justify-between cursor-pointer p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition opacity-50 pointer-events-none">
+                    <span class="font-medium">Sincronizar peças (Nova OS)</span>
+                    <div class="relative">
+                        <input type="checkbox" id="toggleSincronizar" class="sr-only peer" disabled>
+                        <div class="w-11 h-6 bg-gray-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </div>
+                </label>
+
+                <label id="labelRequisitar" for="toggleRequisitar" class="flex items-center justify-between cursor-pointer p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition opacity-50 pointer-events-none">
+                    <span class="font-medium">Requisitar peças do orçamento (Nova OS)</span>
+                    <div class="relative">
+                        <input type="checkbox" id="toggleRequisitar" class="sr-only peer" disabled>
+                        <div class="w-11 h-6 bg-gray-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </div>
+                </label>
+
+                <label for="toggleFinalizar" class="flex items-center justify-between cursor-pointer p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition">
+                    <span class="font-medium">Finalizar OS Atual (GSPN)</span>
+                    <div class="relative">
+                        <input type="checkbox" id="toggleFinalizar" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-600"></div>
+                    </div>
+                </label>
+            </div>
+
+            <div class="relative">
+                <button type="submit" id="vincularOsSubmitBtn" class="btn-custom px-4 py-2 rounded-lg transition w-full">Executar Ações</button>
+                <span id="vincularOsSubmitLoading" class="loading-icon absolute right-[-24px] top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 hidden">
+                    <svg class="w-full h-full" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 12a8 8 0 0116 0"></path></svg>
+                </span>
+            </div>
+            <div id="vincularOsError" class="error-message hidden"></div>
+            <div id="vincularOsSuccess" class="text-sm text-green-500 text-center hidden"></div>
+
+
+            <button type="button" id="vincularOsBackBtn" class="btn-custom bg-gray-500 hover:bg-gray-600 px-4 py-2 rounded-lg w-full mt-4">Voltar</button>
+        </form>
+    </div>
+    <!-- Sincronizar Peças -->
+    <div class="card hidden" id="syncPartsCard"> <h1 class="text-2xl font-bold text-center mb-6">AutoMX - Sincronizar Peças</h1>
+
+        <div id="syncTasksContainer" class="mb-6 space-y-3 max-h-60 overflow-y-auto pr-2">
+            </div>
+    
+        <form id="osForm" class="flex gap-4 mb-6 items-center">
+            <input type="text" id="os_gspn" name="os_gspn" placeholder="Digite a OS do GSPN sem espaços" required class="form-control flex-1">
+            <div class="relative">
+                <button type="submit" id="submitBtn" class="btn-custom px-4 py-2 rounded-lg transition">Enviar</button>
+                <span id="submitLoading" class="loading-icon absolute right-[-24px] top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 hidden">
+                    <svg class="w-full h-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 12a8 8 0 0116 0"></path>
+                    </svg>
+                </span>
+            </div>
+        </form>
+    
+        <button id="syncBackBtn" class="btn-custom px-4 py-2 rounded-lg w-full">Voltar</button>
+    </div>
+
+    <!-- Solicitar SAW - Etapa Inicial -->
+    <div class="card hidden" id="sawInitialCard">
+        <h1 class="text-2xl font-bold text-center mb-6">Solicitação de SAW</h1>
+        <form id="sawInitialForm" class="flex flex-col gap-4 mb-6">
+            <input type="text" id="sawOsNumber" name="sawOsNumber" placeholder="Digite o número da OS" required class="form-control">
+            <select id="sawCategory" name="sawCategory" class="form-control" required>
+                <option value="" disabled selected>Selecione a categoria da SAW</option>
+                <option value="oxidacao">Oxidação [VOID]</option>
+                <option value="uso_excessivo">Uso excessivo de peças</option>
+                <option value="pecas_cosmeticas">Peças cosméticas</option>
+                <option value="os_mista">OS mista [Exceção de peças]</option>
+            </select>
+            <div class="relative">
+                <button type="submit" id="sawSubmitBtn" class="btn-custom px-4 py-2 rounded-lg transition w-full">Enviar</button>
+                <span id="sawSubmitLoading" class="loading-icon absolute right-[-24px] top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 hidden">
+                    <svg class="w-full h-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 12a8 8 0 0116 0"></path>
+                    </svg>
+                </span>
+            </div>
+            <div id="sawError" class="error-message hidden"></div>
+        </form>
+        <div id="sawLoading" class="loading-container hidden justify-center">
+            <span class="loading-icon w-6 h-6 text-blue-500">
+                <svg class="w-full h-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 12a8 8 0 0116 0"></path>
+                </svg>
+            </span>
+            <span>Carregando informações...</span>
+        </div>
+        <button id="sawInitialBackBtn" class="btn-custom px-4 py-2 rounded-lg w-full mt-4">Voltar</button>
+    </div>
+
+    <!-- Solicitar SAW - Formulário Pré-preenchido -->
+    <div class="card hidden" id="sawFormCard">
+        <h1 class="text-2xl font-bold text-center mb-6">Solicitação de SAW</h1>
+        <div id="alertDiv" class="alert hidden"></div>
+        <form id="sawForm">
+            <div class="mb-6">
+                <label for="category" class="block text-sm font-medium mb-2">Categoria</label>
+                <select id="category" name="category" class="form-control" required disabled>
+                    <option value="">Selecione uma categoria</option>
+                    <option value="oxidacao">Oxidação [VOID]</option>
+                    <option value="uso_excessivo">Uso excessivo de peças</option>
+                    <option value="pecas_cosmeticas">Peças cosméticas</option>
+                    <option value="os_mista">OS mista [Exceção de peças]</option>
+                </select>
+            </div>
+            <div class="mb-6">
+                <label for="observations" class="block text-sm font-medium mb-2">Observações</label>
+                <textarea id="observations" name="observations" rows="3" class="form-control" placeholder="Digite suas observações aqui"></textarea>
+            </div>
+            <div id="partsList" class="mb-6">
+                <h2 class="text-lg font-semibold mb-4">Peças</h2>
+                <div id="entries"></div>
+                <button type="button" id="addPartBtn" class="btn-custom px-4 py-2 rounded-lg mt-2">Adicionar Peça</button>
+            </div>
+            <button type="submit" class="btn-custom px-4 py-2 rounded-lg w-full mb-4">Enviar Solicitação</button>
+        </form>
+        <button id="sawFormBackBtn" class="btn-custom px-4 py-2 rounded-lg w-full">Voltar</button>
+    </div>
+    <div class="card hidden" id="requisicaoOsCard">
+        <h1 class="text-2xl font-bold text-center mb-6">Requisitar Peças do Orçamento</h1>
+        <form id="requisicaoOsForm" class="flex flex-col gap-4 mb-6">
+            <input type="text" id="requisicaoOsNumber" name="requisicaoOsNumber" placeholder="Digite a OS do COS sem espaços" required class="form-control">
+            <div class="relative">
+                <button type="submit" id="requisicaoOsSubmitBtn" class="btn-custom px-4 py-2 rounded-lg transition w-full">Buscar Informações</button>
+                <span id="requisicaoOsSubmitLoading" class="loading-icon absolute right-[-24px] top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 hidden">
+                    <svg class="w-full h-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 12a8 8 0 0116 0"></path>
+                    </svg>
+                </span>
+            </div>
+            <div id="requisicaoOsError" class="error-message hidden"></div>
+        </form>
+        <div id="requisitionTasksContainer" class="mb-6 space-y-3 max-h-60 overflow-y-auto pr-2"></div>
+        <div id="requisicaoLoading" class="loading-container hidden justify-center">
+            <span class="loading-icon w-6 h-6 text-blue-500">
+                <svg class="w-full h-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 12a8 8 0 0116 0"></path>
+                </svg>
+            </span>
+            <span>Carregando informações...</span>
+        </div>
+        <button id="requisicaoOsBackBtn" class="btn-custom px-4 py-2 rounded-lg w-full mt-4">Voltar</button>
+    </div>
+
+    <div class="card hidden" id="requisicaoFormCard">
+        <h1 class="text-2xl font-bold text-center mb-6">Requisitar Peças - OS: <span id="requisicaoFormOsLabel"></span></h1>
+
+        <div id="requisicaoAlerts" class="mb-4 space-y-2">
+            </div>
+
+        <form id="requisicaoForm" class="space-y-6">
+            <div>
+                <label for="requisicaoUserSelect" class="block text-sm font-medium mb-1">Usuário Responsável (COS)</label>
+                <select id="requisicaoUserSelect" name="requisicaoUserSelect" class="form-control" required>
+                    <option value="" disabled>Selecione um usuário</option>
+                    </select>
+                <div id="requisicaoUserWarning" class="text-sm text-orange-600 mt-1 hidden"></div>
+            </div>
+
+            <div>
+                <h2 class="text-lg font-semibold mb-2">Peças a Requisitar</h2>
+                <div id="requisicaoPartsToRequestList" class="space-y-3 max-h-60 overflow-y-auto pr-2">
+                    </div>
+                 <div id="requisicaoPartsError" class="error-message hidden"></div>
+            </div>
+
+            <div>
+                <h2 class="text-lg font-semibold mb-2">Peças já inseridas na OS (COS)</h2>
+                <div id="requisicaoPartsUsedList" class="space-y-1 text-sm text-withe-700 max-h-40 overflow-y-auto pr-2">
+                     </div>
+            </div>
+
+             <div class="flex gap-4 mt-6">
+                <button type="button" id="requisicaoFormBackBtn" class="btn-custom bg-gray-500 hover:bg-gray-600 px-4 py-2 rounded-lg w-full">Voltar</button>
+                <div class="relative w-full">
+                    <button type="submit" id="requisicaoFormSubmitBtn" class="btn-custom px-4 py-2 rounded-lg transition w-full">Enviar Requisição</button>
+                     <span id="requisicaoFormSubmitLoading" class="loading-icon absolute right-[-24px] top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 hidden">
+                        <svg class="w-full h-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 12a8 8 0 0116 0"></path>
+                        </svg>
+                    </span>
+                </div>
+            </div>
+             <div id="requisicaoSubmitError" class="error-message hidden mt-4"></div>
+
+        </form>
+    </div>
+    <div class="card hidden" id="userManagementCard">
+        <h1 class="text-2xl font-bold text-center mb-6">Gerenciar Usuários COS</h1>
+        <label for="addUserName" class="block text-sm text-center font-medium mb-1">Necessário para requisitar peças e solicitar SAW.</label>
+        <div class="mb-6 pb-6 border-b border-gray-400">
+            <h2 class="text-lg font-semibold mb-3">Deletar Usuário Existente</h2>
+            <div class="flex items-end gap-3">
+                <div class="flex-1">
+                    <label for="manageUserSelect" class="block text-sm font-medium mb-1">Usuário</label>
+                    <select id="manageUserSelect" name="manageUserSelect" class="form-control">
+                        <option value="">Carregando...</option>
+                    </select>
+                </div>
+                <button id="manageUserDeleteBtn" class="btn-custom bg-red-600 hover:bg-red-700 px-3 py-2 rounded-lg flex-shrink-0" title="Deletar Usuário Selecionado" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
+                        <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/>
+                        <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3V2h11v1z"/>
+                      </svg>
+                </button>
+            </div>
+            <div id="manageUserDeleteFeedback" class="text-sm mt-2"></div> </div>
+    
+        <div class="mb-6">
+            <h2 class="text-lg font-semibold mb-3">Cadastrar Novo Usuário</h2>
+            <form id="addUserForm" class="space-y-4">
+                <div>
+                    <label for="addUserName" class="block text-sm font-medium mb-1">Nome do técnico (assim como aparece no COS, em maiúsculo)</label>
+                    <input type="text" id="addUserName" name="addUserName" required class="form-control" placeholder="Ex: João Silva">
+                </div>
+                <div>
+                    <label for="addUserLogin" class="block text-sm font-medium mb-1">User (Login COS)</label>
+                    <input type="text" id="addUserLogin" name="addUserLogin" required class="form-control" placeholder="Login usado no sistema COS">
+                </div>
+                <div>
+                    <label for="addUserPassword" class="block text-sm font-medium mb-1">Senha</label>
+                    <input type="password" id="addUserPassword" name="addUserPassword" required class="form-control">
+                </div>
+                <div class="relative">
+                    <button type="submit" id="addUserSubmitBtn" class="btn-custom px-4 py-2 rounded-lg transition w-full">Cadastrar Usuário</button>
+                     <span id="addUserSubmitLoading" class="loading-icon absolute right-[-24px] top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 hidden">
+                         <svg class="w-full h-full" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 12a8 8 0 0116 0"></path></svg>
+                     </span>
+                </div>
+                <div id="addUserFeedback" class="text-sm mt-2"></div> </form>
+        </div>
+    
+        <button id="manageUserBackBtn" class="btn-custom bg-gray-500 hover:bg-gray-600 px-4 py-2 rounded-lg w-full mt-4">Voltar</button>
+    </div>
+
+    <script>
+        // --- REFERÊNCIAS AOS ELEMENTOS HTML ---
+        // Menu Principal e Cards
+        const mainMenu = document.getElementById('mainMenu');
+        const syncPartsCard = document.getElementById('syncPartsCard');
+        const sawInitialCard = document.getElementById('sawInitialCard');
+        const sawFormCard = document.getElementById('sawFormCard');
+        const requisicaoOsCard = document.getElementById('requisicaoOsCard');
+        const requisicaoFormCard = document.getElementById('requisicaoFormCard');
+        const userManagementCard = document.getElementById('userManagementCard');
+        const vincularOsCard = document.getElementById('vincularOsCard'); // Novo Card
+    
+        // Botões Menu Principal
+        const syncPartsBtn = document.getElementById('syncPartsBtn');
+        const requestSawBtn = document.getElementById('requestSawBtn');
+        const requestPartsBtn = document.getElementById('requestPartsBtn');
+        const manageUsersBtn = document.getElementById('manageUsersBtn');
+        const vincularOsBtn = document.getElementById('vincularOsBtn'); // Novo Botão
+    
+        // Elementos Sincronizar Peças
+        const syncTasksContainer = document.getElementById('syncTasksContainer');
+        const osForm = document.getElementById('osForm');
+        const osInput = document.getElementById('os_gspn'); // Renomeado de os_gspn para clareza
+        const submitBtn = document.getElementById('submitBtn');
+        const submitLoading = document.getElementById('submitLoading');
+        const syncBackBtn = document.getElementById('syncBackBtn');
+    
+        // Elementos Solicitar SAW (Inicial)
+        const sawInitialForm = document.getElementById('sawInitialForm');
+        const sawOsNumberInput = document.getElementById('sawOsNumber'); // Renomeado para clareza
+        const sawCategorySelect = document.getElementById('sawCategory'); // Renomeado para clareza
+        const sawSubmitBtn = document.getElementById('sawSubmitBtn');
+        const sawSubmitLoading = document.getElementById('sawSubmitLoading');
+        const sawError = document.getElementById('sawError');
+        const sawLoading = document.getElementById('sawLoading');
+        const sawInitialBackBtn = document.getElementById('sawInitialBackBtn');
+    
+        // Elementos Solicitar SAW (Formulário)
+        const sawForm = document.getElementById('sawForm');
+        const categorySelect = document.getElementById('category'); // Usado no form SAW
+        const partsList = document.getElementById('entries');       // Usado no form SAW
+        const addPartBtn = document.getElementById('addPartBtn');     // Usado no form SAW
+        const observations = document.getElementById('observations'); // Usado no form SAW
+        const alertDiv = document.getElementById('alertDiv');       // Usado no form SAW
+        const sawFormBackBtn = document.getElementById('sawFormBackBtn');
+    
+        // Elementos Requisitar Peças (Pedir OS)
+        const requisicaoOsForm = document.getElementById('requisicaoOsForm');
+        const requisicaoOsNumberInput = document.getElementById('requisicaoOsNumber');
+        const requisicaoOsSubmitBtn = document.getElementById('requisicaoOsSubmitBtn');
+        const requisicaoOsSubmitLoading = document.getElementById('requisicaoOsSubmitLoading');
+        const requisicaoOsError = document.getElementById('requisicaoOsError');
+        const requisitionTasksContainer = document.getElementById('requisitionTasksContainer');
+        const requisicaoLoading = document.getElementById('requisicaoLoading');
+        const requisicaoOsBackBtn = document.getElementById('requisicaoOsBackBtn');
+    
+        // Elementos Requisitar Peças (Formulário)
+        const requisicaoForm = document.getElementById('requisicaoForm');
+        const requisicaoFormOsLabel = document.getElementById('requisicaoFormOsLabel');
+        const requisicaoAlerts = document.getElementById('requisicaoAlerts');
+        const requisicaoUserSelect = document.getElementById('requisicaoUserSelect');
+        const requisicaoUserWarning = document.getElementById('requisicaoUserWarning');
+        const requisicaoPartsToRequestList = document.getElementById('requisicaoPartsToRequestList');
+        const requisicaoPartsUsedList = document.getElementById('requisicaoPartsUsedList');
+        const requisicaoFormBackBtn = document.getElementById('requisicaoFormBackBtn');
+        const requisicaoFormSubmitBtn = document.getElementById('requisicaoFormSubmitBtn');
+        const requisicaoFormSubmitLoading = document.getElementById('requisicaoFormSubmitLoading');
+        const requisicaoPartsError = document.getElementById('requisicaoPartsError');
+        const requisicaoSubmitError = document.getElementById('requisicaoSubmitError');
+    
+        // Elementos Gerenciar Usuários
+        const manageUserSelect = document.getElementById('manageUserSelect');
+        const manageUserDeleteBtn = document.getElementById('manageUserDeleteBtn');
+        const manageUserDeleteFeedback = document.getElementById('manageUserDeleteFeedback');
+        const addUserForm = document.getElementById('addUserForm');
+        const addUserNameInput = document.getElementById('addUserName');
+        const addUserLoginInput = document.getElementById('addUserLogin');
+        const addUserPasswordInput = document.getElementById('addUserPassword');
+        const addUserSubmitBtn = document.getElementById('addUserSubmitBtn');
+        const addUserSubmitLoading = document.getElementById('addUserSubmitLoading');
+        const addUserFeedback = document.getElementById('addUserFeedback');
+        const manageUserBackBtn = document.getElementById('manageUserBackBtn');
+    
+        // Elementos Vincular/Finalizar OS (Novo Card)
+        const vincularOsForm = document.getElementById('vincularOsForm');
+        const vincularOsNumberInput = document.getElementById('vincularOsNumber');
+        const toggleGerarOs = document.getElementById('toggleGerarOs');
+        const toggleSincronizar = document.getElementById('toggleSincronizar');
+        const labelSincronizar = document.getElementById('labelSincronizar');
+        const toggleRequisitar = document.getElementById('toggleRequisitar');
+        const labelRequisitar = document.getElementById('labelRequisitar');
+        const toggleFinalizar = document.getElementById('toggleFinalizar');
+        const vincularOsSubmitBtn = document.getElementById('vincularOsSubmitBtn');
+        const vincularOsSubmitLoading = document.getElementById('vincularOsSubmitLoading');
+        const vincularOsError = document.getElementById('vincularOsError');
+        const vincularOsSuccess = document.getElementById('vincularOsSuccess');
+        const vincularOsBackBtn = document.getElementById('vincularOsBackBtn');
+    
+        // Elementos Status Login GSPN
+        const gspnStatusText = document.querySelector('.gspn-status-text');
+        const gspnStatusIndicator = document.querySelector('.gspn-status-indicator');
+        const gspnLoginDropdown = document.querySelector('.gspn-login-dropdown');
+        const gspnLoginList = document.getElementById('gspn-login-list');
+        const gspnReloadBtn = document.querySelector('.gspn-reload-btn');
+    
+        // --- ESTADO DA APLICAÇÃO ---
+        let activeSyncTasks = new Map(); // { os: element }
+        let activeRequisitionTasks = new Map(); // { os: { element: element, data: submissionData } }
+        let currentRequisitionData = null; // Dados para o form de requisição atual
+        let currentRequisitionOS = null;   // OS do form de requisição atual
+        window.pecas_totais = null; // Global para peças SAW (considerar remover do global se possível)
+    
+        // --- SOCKET.IO ---
+        const socket = io();
+        socket.on('connect', () => {
+            console.log('Conectado ao servidor SocketIO. ID:', socket.id);
+        });
+        socket.on('connect_error', (error) => {
+            console.error('Erro de conexão SocketIO:', error);
+        });
+    
+        // Listener para atualizações de Sincronização
+        socket.on('progress', (data) => {
+            console.log("Socket 'progress' (sync) received:", data);
+            if (!data.os) {
+                console.error("Socket 'progress' event missing 'os' property:", data);
+                return;
+            }
+            const taskElement = activeSyncTasks.get(data.os);
+            if (taskElement) {
+                updateSyncTaskStatus(taskElement, data.status, data.step || data.error);
+            } else {
+                console.warn(`Recebido progresso de sync para OS ${data.os}, mas nenhum elemento correspondente encontrado.`);
+            }
+        });
+    
+        // Listener para atualizações de Requisição (do processo background)
+        // *** CORRIGIDO: Renomeado para 'requisition_progress' para diferenciar ***
+        socket.on('requisition_progress', (data) => {
+            console.log("Socket 'requisition_progress' received:", data);
+            if (!data.os) {
+                console.error("Socket 'requisition_progress' event missing 'os' property:", data);
+                return;
+            }
+            const taskInfo = activeRequisitionTasks.get(data.os);
+            if (taskInfo && taskInfo.element) {
+                updateRequisitionTaskStatus(taskInfo.element, data.status, data.step || data.error);
+            } else {
+                console.warn(`Recebido status de requisição para OS ${data.os}, mas nenhuma tarefa ativa encontrada.`);
+            }
+        });
+    
+        // --- FUNÇÕES AUXILIARES ---
+    
+        function transitionToCard(fromCard, toCard) {
+            if (!fromCard || !toCard) {
+                console.error("Tentativa de transição com card inválido:", fromCard, toCard);
+                return;
+            }
+            fromCard.classList.remove('visible');
+            setTimeout(() => {
+                fromCard.classList.add('hidden');
+                toCard.classList.remove('hidden');
+                // Usar requestAnimationFrame para garantir que o navegador aplicou a mudança de 'hidden'
+                requestAnimationFrame(() => {
+                    toCard.classList.add('visible');
+                });
+            }, 500); // Tempo da animação de fade out
+        }
+    
+        function disableSubmitButton(btn, loading, disable) {
+            if (!btn || !loading) return;
+            btn.disabled = disable;
+            btn.classList.toggle('disabled', disable);
+            loading.classList.toggle('hidden', !disable);
+        }
+    
+        function createTaskStatusIcon(status) {
+            // (Função exatamente como fornecida anteriormente)
+            if (status === 'processing') {
+                return `<svg class="inline-block w-5 h-5 text-blue-500 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 12a8 8 0 0116 0"></path></svg>`;
+            } else if (status === 'completed') {
+                return `<svg class="inline-block w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+            } else if (status === 'failed' || status === 'error') { // Adicionado 'error'
+                return `<svg class="inline-block w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`;
+            }
+            return '';
+        }
+    
+        function addDeleteButton(container, buttonClass) {
+            // (Função similar à anterior, mas generalizada com classe)
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = `btn-custom-sm bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs ${buttonClass}`; // Usa a classe passada
+            deleteBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-trash inline-block" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3V2h11v1z"/></svg>`;
+            deleteBtn.title = 'Remover tarefa';
+            container.appendChild(deleteBtn);
+        }
+    
+        function addRetryButton(container, buttonClass) {
+            const retryBtn = document.createElement('button');
+            retryBtn.className = `btn-custom-sm bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs ${buttonClass}`;
+            retryBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-arrow-clockwise inline-block" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/></svg>`;
+            retryBtn.title = 'Tentar novamente';
+            container.appendChild(retryBtn);
+        }
+    
+        // --- FUNÇÕES PARA TAREFAS ESPECÍFICAS ---
+    
+        // == Sincronização ==
+        function createSyncTaskElement(os) {
+            // (Função exatamente como fornecida anteriormente)
+            const taskId = `sync-task-${os}`;
+            const taskElement = document.createElement('div');
+            taskElement.id = taskId;
+            taskElement.className = 'task-item p-3 border rounded bg-gray-100 flex justify-between items-center gap-3';
+            taskElement.dataset.os = os;
+    
+            taskElement.innerHTML = `
+                <div class="flex-1">
+                    <span class="font-semibold text-gray-600">OS: ${os}</span>
+                    <span class="task-status block text-sm text-gray-600">Iniciando...</span>
+                </div>
+                <div class="task-icon">
+                    ${createTaskStatusIcon('processing')}
+                </div>
+                <div class="task-actions flex gap-2">
+                    </div>
+            `;
+            return taskElement;
+        }
+    
+        function updateSyncTaskStatus(taskElement, status, message = '') {
+            // (Função exatamente como fornecida anteriormente, usando addDeleteButton)
+            if (!taskElement) return;
+            const statusSpan = taskElement.querySelector('.task-status');
+            const iconDiv = taskElement.querySelector('.task-icon');
+            const actionsDiv = taskElement.querySelector('.task-actions');
+            if (!statusSpan || !iconDiv || !actionsDiv) return;
+    
+            const isLoadingIconVisible = iconDiv.querySelector('svg.animate-spin');
+            statusSpan.textContent = message || status;
+    
+            if (status === 'completed') {
+                statusSpan.className = 'task-status block text-sm text-green-700 font-bold';
+                iconDiv.innerHTML = createTaskStatusIcon('completed');
+                actionsDiv.innerHTML = '';
+                addDeleteButton(actionsDiv, 'delete-sync-task'); // Passa classe específica
+            } else if (status === 'failed' || status === 'error') {
+                statusSpan.className = 'task-status block text-sm text-red-700';
+                iconDiv.innerHTML = createTaskStatusIcon('failed');
+                actionsDiv.innerHTML = '';
+                addDeleteButton(actionsDiv, 'delete-sync-task');
+            } else if (isLoadingIconVisible) {
+                statusSpan.className = 'task-status block text-sm text-gray-600';
+            } else if (status === 'processing' && !isLoadingIconVisible) {
+                statusSpan.className = 'task-status block text-sm text-gray-600';
+                iconDiv.innerHTML = createTaskStatusIcon('processing');
+                actionsDiv.innerHTML = '';
+            }
+        }
+    
+        // *** NOVA FUNÇÃO REUTILIZÁVEL para iniciar sincronização ***
+        async function iniciarSincronizacao(os_gspn) {
+            if (!os_gspn) {
+                console.error("Tentativa de iniciar sincronização sem número de OS.");
+                // Poderia exibir um erro para o usuário aqui se viesse de um input direto
+                return;
+            }
+            console.log(`Iniciando sincronização para OS: ${os_gspn}`);
+    
+            // 1. Verificar se já existe tarefa
+            if (activeSyncTasks.has(os_gspn)) {
+                console.warn(`Sincronização para OS ${os_gspn} já está ativa.`);
+                const existingElement = activeSyncTasks.get(os_gspn);
+                if(existingElement) {
+                    existingElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    existingElement.classList.add('animate-pulse');
+                    setTimeout(() => existingElement.classList.remove('animate-pulse'), 1500);
+                }
+                return; // Não inicia de novo
+            }
+    
+            // 2. Criar o elemento visual da tarefa
+            const taskElement = createSyncTaskElement(os_gspn);
+            syncTasksContainer.prepend(taskElement);
+            activeSyncTasks.set(os_gspn, taskElement);
+    
+            // 3. Chamar o backend para iniciar o processo
+            try {
+                const response = await fetch('/submit_os', { // Endpoint existente
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ os_gspn: os_gspn })
+                });
+                const result = await response.json();
+    
+                if (result.status === 'success') {
+                    updateSyncTaskStatus(taskElement, 'processing', 'Processando...');
+                } else {
+                    updateSyncTaskStatus(taskElement, 'failed', result.message || 'Erro ao iniciar no backend');
+                }
+            } catch (error) {
+                console.error(`Erro de comunicação ao iniciar sincronização para ${os_gspn}:`, error);
+                updateSyncTaskStatus(taskElement, 'failed', `Erro de comunicação: ${error.message}`);
+            }
+        }
+    
+        // == Requisição ==
+        function createRequisitionTaskElement(os) {
+            // (Função exatamente como fornecida anteriormente)
+            const taskId = `req-task-${os}`;
+            const taskElement = document.createElement('div');
+            taskElement.id = taskId;
+            taskElement.className = 'task-item p-3 border rounded bg-gray-100 flex justify-between items-center gap-3';
+            taskElement.dataset.os = os;
+    
+            taskElement.innerHTML = `
+                <div class="flex-1">
+                    <span class="font-semibold text-gray-600">Requisição OS: ${os}</span>
+                    <span class="task-status block text-sm text-gray-600">Enviando...</span>
+                </div>
+                <div class="task-icon">
+                    ${createTaskStatusIcon('processing')}
+                </div>
+                <div class="task-actions flex gap-2">
+                    </div>
+            `;
+            return taskElement;
+        }
+    
+        function updateRequisitionTaskStatus(taskElement, status, message = '') {
+            // (Função adaptada para usar botões auxiliares)
+            if (!taskElement) return;
+            const statusSpan = taskElement.querySelector('.task-status');
+            const iconDiv = taskElement.querySelector('.task-icon');
+            const actionsDiv = taskElement.querySelector('.task-actions');
+             if (!statusSpan || !iconDiv || !actionsDiv) return;
+    
+            const isLoadingIconVisible = iconDiv.querySelector('svg.animate-spin');
+            statusSpan.textContent = message || status;
+            actionsDiv.innerHTML = ''; // Limpa ações
+    
+            if (status === 'completed') {
+                statusSpan.className = 'task-status block text-sm text-green-700 font-bold';
+                iconDiv.innerHTML = createTaskStatusIcon('completed');
+                addDeleteButton(actionsDiv, 'delete-req-task'); // Passa classe específica
+            } else if (status === 'failed' || status === 'error') {
+                statusSpan.className = 'task-status block text-sm text-red-700';
+                iconDiv.innerHTML = createTaskStatusIcon('failed');
+                // Adiciona botões de Retry e Delete para falha
+                addRetryButton(actionsDiv, 'retry-req-task');
+                addDeleteButton(actionsDiv, 'delete-req-task');
+            } else if (isLoadingIconVisible) {
+                statusSpan.className = 'task-status block text-sm text-gray-600';
+            } else if (status === 'processing' && !isLoadingIconVisible) {
+                 statusSpan.className = 'task-status block text-sm text-gray-600';
+                 iconDiv.innerHTML = createTaskStatusIcon('processing');
+            }
+        }
+    
+        function populateRequisitionForm(os, data) {
+            // (Função exatamente como fornecida anteriormente)
+            currentRequisitionData = data;
+            currentRequisitionOS = os;
+            requisicaoFormOsLabel.textContent = os;
+            requisicaoAlerts.innerHTML = '';
+            requisicaoUserSelect.innerHTML = '<option value="" disabled>Selecione um usuário</option>';
+            requisicaoPartsToRequestList.innerHTML = '';
+            requisicaoPartsUsedList.innerHTML = '';
+            requisicaoUserWarning.classList.add('hidden');
+            requisicaoPartsError.classList.add('hidden');
+            requisicaoSubmitError.classList.add('hidden');
+    
+            // Alertas
+            if (data.aviso_status_os) { /* ... add alert ... */ }
+            if (data.aviso_requisicoes_pendentes) { /* ... add alert ... */ }
+            if (data.parts_to_remove && data.parts_to_remove.length > 0) { /* ... add alert ... */ }
+             // (O código dos alertas foi omitido para brevidade, mas deve ser mantido como antes)
+             const alertsContainer = requisicaoAlerts;
+                if (data.aviso_status_os) {
+                     const alertEl = document.createElement('div');
+                     alertEl.className = 'p-2 text-sm text-yellow-800 bg-yellow-100 rounded border border-yellow-300';
+                     alertEl.textContent = 'Atenção: Ao prosseguir o status da OS do COS será alterado para "Técnico designado" para ser possível requisitar.';
+                     alertsContainer.appendChild(alertEl);
+                }
+                if (data.aviso_requisicoes_pendentes) {
+                     const alertEl = document.createElement('div');
+                     alertEl.className = 'p-2 text-sm text-yellow-800 bg-yellow-100 rounded border border-yellow-300';
+                     alertEl.textContent = `Atenção: Existem requisições pendentes (${data.requisicoes_pendentes.join(', ')}). Estas serão canceladas para a nova requisição ser enviada.`;
+                     alertsContainer.appendChild(alertEl);
+                }
+                 if (data.parts_to_remove && data.parts_to_remove.length > 0) {
+                     const alertEl = document.createElement('div');
+                     alertEl.className = 'p-2 text-sm text-yellow-800 bg-yellow-100 rounded border border-yellow-300';
+                     alertEl.textContent = 'Advertência: Algumas das peças para requisitar já estão inseridas no GSPN e serão deletadas ao enviar a nova requisição (verifique QR Codes).';
+                     alertsContainer.appendChild(alertEl);
+                 }
+    
+            // Usuários
+            data.lista_usuarios.forEach(user => { /* ... add option ... */ });
+             // (O código de popular usuários foi omitido para brevidade, mas deve ser mantido como antes)
+              data.lista_usuarios.forEach(user => {
+                    const option = document.createElement('option');
+                    option.value = user;
+                    option.textContent = user;
+                    if (user === data.nome_tecnico_sugerido) {
+                        option.selected = true;
+                    }
+                    requisicaoUserSelect.appendChild(option);
+                });
+    
+            // Advertência Usuário
+            const tecnicoSugeridoValido = data.nome_tecnico_sugerido && data.lista_usuarios.includes(data.nome_tecnico_sugerido);
+            if (!tecnicoSugeridoValido && data.nome_tecnico_sugerido) { /* ... show warning ... */ }
+            else if (!data.nome_tecnico_sugerido) { /* ... show warning ... */ }
+            // (O código das advertências foi omitido para brevidade, mas deve ser mantido como antes)
+              if (!tecnicoSugeridoValido && data.nome_tecnico_sugerido) {
+                    requisicaoUserWarning.textContent = `Advertência: O técnico "${data.nome_tecnico_sugerido}" não possui login na lista. Selecione um usuário válido.`;
+                    requisicaoUserWarning.classList.remove('hidden');
+                     requisicaoUserSelect.value = "";
+                } else if (!data.nome_tecnico_sugerido) {
+                     requisicaoUserWarning.textContent = `Advertência: Nenhum técnico sugerido encontrado para esta OS. Selecione um usuário.`;
+                     requisicaoUserWarning.classList.remove('hidden');
+                }
+    
+    
+            // Peças a Requisitar
+            if (data.pecas_para_requisitar && data.pecas_para_requisitar.length > 0) { /* ... add parts ... */ }
+            else { /* ... show no parts message, disable submit ... */ }
+            // (O código de popular peças a requisitar foi omitido para brevidade, mas deve ser mantido como antes)
+             if (data.pecas_para_requisitar && data.pecas_para_requisitar.length > 0) {
+                    data.pecas_para_requisitar.forEach(peca => {
+                        const partDiv = document.createElement('div');
+                        partDiv.className = 'part-entry flex items-center gap-3 p-2 border rounded bg-gray-50';
+                        partDiv.dataset.code = peca.codigo;
+                        partDiv.dataset.keyname = peca.keyname;
+                        const descriptionSpan = document.createElement('span');
+                        descriptionSpan.textContent = `${peca.codigo} - ${peca.descricao}`;
+                        descriptionSpan.className = 'flex-1 text-sm text-gray-600';
+                        const quantityInput = document.createElement('input');
+                        quantityInput.type = 'number';
+                        quantityInput.min = '1';
+                        quantityInput.value = peca.quantidade;
+                        quantityInput.className = 'form-control w-20 text-sm';
+                        quantityInput.dataset.role = 'quantity';
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.type = 'button';
+                        deleteBtn.className = 'btn-custom bg-red-600 hover:bg-red-700 px-2 py-1 rounded-lg text-white';
+                        deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>';
+                        deleteBtn.title = 'Remover esta peça';
+                        deleteBtn.addEventListener('click', () => partDiv.remove());
+                        partDiv.appendChild(descriptionSpan);
+                        partDiv.appendChild(quantityInput);
+                        partDiv.appendChild(deleteBtn);
+                        requisicaoPartsToRequestList.appendChild(partDiv);
+                    });
+                } else {
+                     requisicaoPartsToRequestList.innerHTML = '<p class="text-sm text-withe-500 text-center">Nenhuma peça aprovada encontrada para requisição.</p>';
+                     requisicaoFormSubmitBtn.disabled = true;
+                     requisicaoFormSubmitBtn.classList.add('disabled');
+                }
+    
+    
+            // Peças Usadas
+            if (data.usadas_cos && data.usadas_cos.length > 0) { /* ... add used parts ... */ }
+            else { /* ... show no used parts message ... */ }
+            // (O código de popular peças usadas foi omitido para brevidade, mas deve ser mantido como antes)
+            if (data.usadas_cos && data.usadas_cos.length > 0) {
+                     data.usadas_cos.forEach(peca => {
+                         const usedPartDiv = document.createElement('div');
+                         usedPartDiv.className = 'text-sm';
+                         usedPartDiv.textContent = `${peca.codigo} - ${peca.descricao}`;
+                         requisicaoPartsUsedList.appendChild(usedPartDiv);
+                     });
+                } else {
+                     requisicaoPartsUsedList.innerHTML = '<p class="text-sm text-gray-500 text-center">Nenhuma peça nesta OS no COS.</p>';
+                }
+    
+        }
+    
+        // *** NOVA FUNÇÃO REUTILIZÁVEL para preparar form de requisição ***
+        async function prepararFormRequisicao(os_gspn) {
+            if (!os_gspn) {
+                console.error("Tentativa de preparar requisição sem número de OS.");
+                return;
+            }
+            console.log(`Preparando formulário de requisição para OS: ${os_gspn}`);
+    
+            // Encontrar o card visível atualmente para a transição
+            const currentVisibleCard = document.querySelector('.card.visible') || mainMenu; // Default para mainMenu se nada estiver visível
+    
+            // Mostra loading DENTRO do card de requisição OS (ou um global se preferir)
+            requisicaoLoading.classList.remove('hidden');
+            // Esconde o form de pedir OS se ele estiver visível
+            if (currentVisibleCard.id === 'requisicaoOsCard') {
+                requisicaoOsForm.classList.add('hidden');
+            }
+    
+            try {
+                // 1. Buscar dados para o formulário
+                const response = await fetch(`/api/requisicoes/${os_gspn}/preparar`, {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                const result = await response.json();
+    
+                requisicaoLoading.classList.add('hidden');
+    
+                if (result.success) {
+                    // 2. Popular e mostrar o formulário de requisição
+                    populateRequisitionForm(os_gspn, result.data);
+                    // Transiciona do card atual para o formulário de requisição
+                    transitionToCard(currentVisibleCard, requisicaoFormCard);
+                    // Habilita botão de submit (se houver peças)
+                    disableSubmitButton(requisicaoFormSubmitBtn, requisicaoFormSubmitLoading, false);
+                    if (!result.data.pecas_para_requisitar || result.data.pecas_para_requisitar.length === 0) {
+                        requisicaoFormSubmitBtn.disabled = true;
+                        requisicaoFormSubmitBtn.classList.add('disabled');
+                    }
+                } else {
+                    // 3. Lidar com erro ao buscar dados
+                    console.error(`Erro ao preparar formulário de requisição para ${os_gspn}: ${result.message}`);
+                    alert(`Falha ao preparar formulário de requisição para a OS ${os_gspn}: ${result.message}`);
+                     // Mostra form de pedir OS novamente se estava nele
+                     if (currentVisibleCard.id === 'requisicaoOsCard') {
+                        requisicaoOsForm.classList.remove('hidden');
+                        disableSubmitButton(requisicaoOsSubmitBtn, requisicaoOsSubmitLoading, false);
+                     } else {
+                         // Se estava em outro card (ex: Vincular), talvez voltar ao menu?
+                         transitionToCard(currentVisibleCard, mainMenu);
+                     }
+                }
+            } catch (error) {
+                console.error(`Erro de comunicação ao preparar requisição para ${os_gspn}:`, error);
+                requisicaoLoading.classList.add('hidden');
+                alert(`Erro de comunicação ao preparar formulário de requisição para a OS ${os_gspn}: ${error.message}`);
+                 // Mostra form de pedir OS novamente se estava nele
+                 if (currentVisibleCard.id === 'requisicaoOsCard') {
+                    requisicaoOsForm.classList.remove('hidden');
+                    disableSubmitButton(requisicaoOsSubmitBtn, requisicaoOsSubmitLoading, false);
+                 } else {
+                     transitionToCard(currentVisibleCard, mainMenu);
+                 }
+            }
+        }
+    
+        // == SAW ==
+        function addPartEntry(pecas_totais, peca_usada = null) { /* ... (Função como antes) ... */ }
+        function updateOWCheckboxVisibility() { /* ... (Função como antes) ... */ }
+         // (As funções addPartEntry e updateOWCheckboxVisibility foram omitidas para brevidade, mas devem ser mantidas como antes)
+          function addPartEntry(pecas_totais, peca_usada = null) {
+                const entryDiv = document.createElement('div');
+                entryDiv.className = 'part-entry entering';
+    
+                const select = document.createElement('select');
+                select.name = 'part_code[]';
+                select.className = 'form-control';
+                select.required = true;
+                select.innerHTML = '<option value="">Selecione o código da peça</option>' +
+                    Object.entries(pecas_totais).map(([key, text]) =>
+                        `<option value="${key}" ${peca_usada && key === peca_usada.keyname ? 'selected' : ''}>${text}</option>`
+                    ).join('');
+    
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.name = 'defect[]';
+                input.className = 'form-control';
+                input.placeholder = 'Descreva o defeito';
+                input.required = true;
+                if (peca_usada && peca_usada.defeito) {
+                    input.value = peca_usada.ow ? `OW - ${peca_usada.defeito}` : peca_usada.defeito;
+                }
+    
+                const owDiv = document.createElement('div');
+                owDiv.className = 'ow-checkbox';
+                owDiv.style.display = 'none';
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.name = 'ow[]';
+                if (peca_usada && peca_usada.ow) checkbox.checked = true;
+                const label = document.createElement('label');
+                label.textContent = 'OW';
+                label.className = 'text-sm';
+                owDiv.appendChild(checkbox);
+                owDiv.appendChild(label);
+    
+                const deleteBtn = document.createElement('button');
+                deleteBtn.type = 'button';
+                deleteBtn.className = 'btn-custom bg-red-600 hover:bg-red-700 px-2 py-1 rounded-lg text-white';
+                deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>';
+                deleteBtn.title = 'Remover peça';
+                deleteBtn.addEventListener('click', function() {
+                    entryDiv.remove();
+                });
+    
+                function updateInputPrefix() {
+                    const isOsMista = categorySelect.value === 'os_mista';
+                    let currentValue = input.value.replace(/^(OW - |LP - )/, '');
+                    if (isOsMista) {
+                        input.value = checkbox.checked ? `OW - ${currentValue}` : `LP - ${currentValue}`;
+                    } else {
+                        input.value = currentValue;
+                    }
+                }
+    
+                checkbox.addEventListener('change', updateInputPrefix);
+                input.addEventListener('input', (e) => { /* ... (como antes) ... */ });
+                 input.addEventListener('input', (e) => {
+                    const isOsMista = categorySelect.value === 'os_mista';
+                    if (isOsMista) {
+                        const prefix = checkbox.checked ? 'OW - ' : 'LP - ';
+                        const currentValue = e.target.value.replace(/^(OW - |LP - )/, '');
+                        if (!e.target.value.startsWith(prefix)) {
+                            e.target.value = `${prefix}${currentValue}`;
+                        }
+                    }
+                });
+    
+    
+                entryDiv.appendChild(select);
+                entryDiv.appendChild(input);
+                entryDiv.appendChild(owDiv);
+                entryDiv.appendChild(deleteBtn);
+                partsList.appendChild(entryDiv);
+                updateOWCheckboxVisibility(); // Chama aqui para garantir visibilidade correta ao adicionar
+                updateInputPrefix(); // Chama aqui para garantir prefixo correto ao adicionar
+            }
+            function updateOWCheckboxVisibility() {
+                const isOsMista = categorySelect.value === 'os_mista';
+                const owCheckboxes = partsList.querySelectorAll('.ow-checkbox');
+                const defectInputs = partsList.querySelectorAll('input[name="defect[]"]');
+    
+                owCheckboxes.forEach((owDiv, index) => {
+                    owDiv.style.display = isOsMista ? 'flex' : 'none';
+                    // Atualiza o prefixo do input correspondente ao mudar a categoria
+                    const input = defectInputs[index];
+                    const checkbox = owDiv.querySelector('input[type="checkbox"]');
+                    let currentValue = input.value.replace(/^(OW - |LP - )/, '');
+                    if (isOsMista) {
+                        input.value = checkbox.checked ? `OW - ${currentValue}` : `LP - ${currentValue}`;
+                    } else {
+                        input.value = currentValue; // Remove prefixo se não for OS Mista
+                    }
+                });
+            }
+    
+    
+        // == Gerenciamento de Usuários ==
+        async function populateUserDropdown() { /* ... (Função como antes) ... */ }
+        // (A função populateUserDropdown foi omitida para brevidade, mas deve ser mantida como antes)
+          async function populateUserDropdown() {
+                manageUserSelect.innerHTML = '<option value="">Carregando...</option>';
+                manageUserDeleteBtn.disabled = true;
+                manageUserDeleteFeedback.textContent = '';
+                addUserFeedback.textContent = '';
+    
+                try {
+                    const response = await fetch('/api/usuarios');
+                    if (!response.ok) throw new Error(`Erro ${response.status}`);
+                    const users = await response.json();
+    
+                    manageUserSelect.innerHTML = '<option value="" disabled selected>Selecione um usuário</option>';
+    
+                    if (users && users.length > 0) {
+                        users.sort().forEach(user => {
+                            const option = document.createElement('option');
+                            option.value = user;
+                            option.textContent = user;
+                            manageUserSelect.appendChild(option);
+                        });
+                        manageUserDeleteBtn.disabled = false;
+                    } else {
+                        manageUserSelect.innerHTML = '<option value="" disabled selected>Nenhum usuário</option>';
+                        manageUserDeleteBtn.disabled = true;
+                    }
+                } catch (error) {
+                    console.error("Erro ao buscar usuários:", error);
+                    manageUserSelect.innerHTML = '<option value="" disabled selected>Erro ao carregar</option>';
+                    manageUserDeleteFeedback.textContent = `Falha: ${error.message}`;
+                    manageUserDeleteFeedback.className = 'text-sm mt-2 text-red-600';
+                    manageUserDeleteBtn.disabled = true;
+                }
+            }
+    
+    
+        // == Status Login GSPN ==
+        async function fetchGSPNLoginStatus() { /* ... (Função como antes) ... */ }
+          async function fetchGSPNLoginStatus() {
+            try {
+                const response = await fetch('/logins_validos', { method: 'GET' });
+                if (!response.ok) throw new Error(`Erro ${response.status}`);
+                const data = await response.json();
+                const logins = Array.isArray(data.valid_logins) ? data.valid_logins : [];
+    
+                gspnStatusIndicator.classList.remove('logged-in', 'logged-out');
+                gspnStatusIndicator.classList.add(logins.length > 0 ? 'logged-in' : 'logged-out');
+    
+                gspnLoginList.innerHTML = '';
+                if (logins.length === 0) {
+                    gspnLoginList.innerHTML = '<li>Nenhum login ativo</li>';
+                } else {
+                    logins.forEach(login => gspnLoginList.innerHTML += `<li>${login}</li>`);
+                }
+            } catch (error) {
+                console.error('Erro GSPN Status:', error);
+                gspnStatusIndicator.classList.remove('logged-in');
+                gspnStatusIndicator.classList.add('logged-out');
+                gspnLoginList.innerHTML = '<li>Erro ao carregar</li>';
+            }
+        }
+    
+    
+        // --- EVENT LISTENERS ---
+    
+        // Navegação Principal
+        syncPartsBtn.addEventListener('click', () => transitionToCard(mainMenu, syncPartsCard));
+        requestSawBtn.addEventListener('click', () => transitionToCard(mainMenu, sawInitialCard));
+        requestPartsBtn.addEventListener('click', () => transitionToCard(mainMenu, requisicaoOsCard));
+        manageUsersBtn.addEventListener('click', async () => {
+            transitionToCard(mainMenu, userManagementCard);
+            await populateUserDropdown();
+        });
+        vincularOsBtn.addEventListener('click', () => { // Navegação para Novo Card
+            vincularOsForm.reset();
+            toggleSincronizar.disabled = true;
+            labelSincronizar.classList.add('opacity-50', 'pointer-events-none');
+            toggleRequisitar.disabled = true;
+            labelRequisitar.classList.add('opacity-50', 'pointer-events-none');
+            vincularOsError.classList.add('hidden');
+            vincularOsSuccess.classList.add('hidden');
+            disableSubmitButton(vincularOsSubmitBtn, vincularOsSubmitLoading, false);
+            transitionToCard(mainMenu, vincularOsCard);
+        });
+    
+    
+        // Botões Voltar
+        syncBackBtn.addEventListener('click', () => {
+            osInput.value = ''; // Limpa input
+            transitionToCard(syncPartsCard, mainMenu);
+        });
+        sawInitialBackBtn.addEventListener('click', () => {
+            sawInitialForm.reset();
+            sawError.classList.add('hidden');
+            transitionToCard(sawInitialCard, mainMenu);
+        });
+        sawFormBackBtn.addEventListener('click', () => {
+            sawInitialForm.reset(); // Limpa form inicial também
+            sawError.classList.add('hidden');
+            disableSubmitButton(sawSubmitBtn, sawSubmitLoading, false); // Reabilita botão inicial
+            transitionToCard(sawFormCard, mainMenu); // Volta direto pro menu
+        });
+        requisicaoOsBackBtn.addEventListener('click', () => {
+             requisicaoOsForm.reset();
+             requisicaoOsError.classList.add('hidden');
+             requisitionTasksContainer.innerHTML = ''; // Limpa tarefas antigas
+             activeRequisitionTasks.clear(); // Limpa mapa de tarefas
+             transitionToCard(requisicaoOsCard, mainMenu);
+        });
+        requisicaoFormBackBtn.addEventListener('click', () => {
+             requisicaoOsForm.reset(); // Limpa form inicial
+             requisicaoOsError.classList.add('hidden');
+             // Volta para a tela de pedir OS, não para o menu principal
+             transitionToCard(requisicaoFormCard, requisicaoOsCard);
+        });
+        manageUserBackBtn.addEventListener('click', () => {
+            addUserForm.reset();
+            manageUserDeleteFeedback.textContent = '';
+            addUserFeedback.textContent = '';
+            transitionToCard(userManagementCard, mainMenu);
+        });
+        vincularOsBackBtn.addEventListener('click', () => { // Botão Voltar do Novo Card
+            transitionToCard(vincularOsCard, mainMenu);
+        });
+    
+        // Submissão Sincronizar Peças (Agora chama a função reutilizável)
+        osForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const os_gspn = osInput.value.trim();
+            if (!os_gspn) return;
+    
+            await iniciarSincronizacao(os_gspn); // *** CHAMA A NOVA FUNÇÃO ***
+    
+            // Limpa o campo e foca para nova entrada
+            osInput.value = '';
+            osInput.focus();
+             // Mostra um loading rápido no botão (opcional, pode ser removido se a função já o fizer)
+             disableSubmitButton(submitBtn, submitLoading, true);
+             setTimeout(() => disableSubmitButton(submitBtn, submitLoading, false), 500);
+        });
+    
+        // Submissão Solicitar SAW (Inicial)
+        sawInitialForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const osNumber = sawOsNumberInput.value.trim();
+            const category = sawCategorySelect.value;
+            if (!osNumber || !category) return;
+    
+            disableSubmitButton(sawSubmitBtn, sawSubmitLoading, true);
+            sawError.classList.add('hidden');
+    
+            // 1. Verificar SAW pendente
+            try {
+                const checkResponse = await fetch(`/api/check_saw_pendente?os=${osNumber}&category=${category}`);
+                if (!checkResponse.ok) throw new Error(`HTTP error! status: ${checkResponse.status}`);
+                const checkResult = await checkResponse.json();
+                if (!checkResult.can_proceed) {
+                    sawError.textContent = "Já existe uma SAW pendente desta categoria.";
+                    sawError.classList.remove('hidden');
+                    disableSubmitButton(sawSubmitBtn, sawSubmitLoading, false);
+                    return;
+                }
+            } catch (error) {
+                console.error("Erro ao verificar SAW pendente:", error);
+                sawError.textContent = `Erro ao verificar SAW: ${error.message}`;
+                sawError.classList.remove('hidden');
+                disableSubmitButton(sawSubmitBtn, sawSubmitLoading, false);
+                return;
+            }
+    
+            // 2. Buscar dados para o formulário
+            sawInitialForm.classList.add('hidden');
+            sawLoading.classList.remove('hidden');
+            try {
+                const dataResponse = await fetch(`/api/saw_data?os=${osNumber}&category=${category}`);
+                if (!dataResponse.ok) throw new Error(`HTTP error! status: ${dataResponse.status}`);
+                const result = await dataResponse.json();
+    
+                sawLoading.classList.add('hidden'); // Esconde loading antes da transição
+    
+                if (result.status === 'success') {
+                    const { pecas_totais, pecas_pre_preenchidas, alerta } = result.data;
+                    window.pecas_totais = pecas_totais; // Armazena globalmente
+    
+                    categorySelect.value = category;
+                    updateOWCheckboxVisibility(); // Atualiza visibilidade OW
+    
+                    partsList.innerHTML = ''; // Limpa lista antiga
+                    if (pecas_pre_preenchidas && Object.keys(pecas_pre_preenchidas).length > 0) {
+                        Object.values(pecas_pre_preenchidas).forEach(peca => addPartEntry(pecas_totais, peca));
+                    } else {
+                         addPartEntry(pecas_totais); // Adiciona uma linha em branco se não houver preenchidas
+                    }
+    
+    
+                    // Define observação padrão para OS Mista
+                    if (category === 'os_mista') {
+                        observations.value = 'OS MISTA ';
+                        // Event listener para manter o prefixo (se necessário - pode ser complexo para o usuário)
+                        /* observations.addEventListener('input', (e) => {
+                            if (!e.target.value.startsWith('OS MISTA ')) {
+                                e.target.value = 'OS MISTA ' + e.target.value.substring('OS MISTA '.length);
+                            }
+                        }); */
+                    } else {
+                        observations.value = ''; // Limpa para outras categorias
+                         // Remove listener antigo se houver
+                         // observations.removeEventListener('input', ...) // Precisaria guardar a referência da função
+                    }
+    
+    
+                    if (alerta) {
+                        alertDiv.textContent = alerta;
+                        alertDiv.classList.remove('hidden');
+                    } else {
+                        alertDiv.classList.add('hidden');
+                    }
+    
+                    transitionToCard(sawInitialCard, sawFormCard); // Transiciona para o formulário
+                } else {
+                     sawError.textContent = `Erro: ${result.message}`;
+                     sawError.classList.remove('hidden');
+                     sawInitialForm.classList.remove('hidden'); // Mostra form inicial de novo
+                     disableSubmitButton(sawSubmitBtn, sawSubmitLoading, false);
+                }
+            } catch (error) {
+                console.error("Erro ao carregar dados SAW:", error);
+                sawLoading.classList.add('hidden');
+                sawError.textContent = `Erro ao carregar dados: ${error.message}`;
+                sawError.classList.remove('hidden');
+                sawInitialForm.classList.remove('hidden');
+                disableSubmitButton(sawSubmitBtn, sawSubmitLoading, false);
+            }
+        });
+    
+        // Adicionar Peça no Formulário SAW
+        addPartBtn.addEventListener('click', () => {
+            if(window.pecas_totais) {
+                addPartEntry(window.pecas_totais)
+            } else {
+                console.error("Não é possível adicionar peça: dados de peças totais não carregados.");
+                // Poderia exibir um alerta para o usuário
+            }
+        });
+    
+        // Atualizar visibilidade OW ao mudar categoria no Formulário SAW
+        categorySelect.addEventListener('change', updateOWCheckboxVisibility);
+    
+        // Submissão Formulário SAW
+        sawForm.addEventListener('submit', async (e) => {
+             e.preventDefault();
+             const formData = new FormData(sawForm);
+             const osOriginal = document.getElementById('sawOsNumber').value.trim(); // Pega a OS original
+             const partsData = [];
+             const partCodes = formData.getAll('part_code[]');
+             const defects = formData.getAll('defect[]');
+             const owCheckboxes = Array.from(sawForm.querySelectorAll('input[name="ow[]"]')); // Pega todos os checkboxes OW
+    
+             partCodes.forEach((code, i) => {
+                 if (code) { // Só adiciona se um código de peça foi selecionado
+                     partsData.push({
+                         code: code,
+                         defect: defects[i] || '', // Pega o defeito correspondente
+                         // Verifica o checkbox correspondente. Assume que a ordem é a mesma.
+                         // O valor 'on' só é enviado se o checkbox estiver marcado.
+                         ow: owCheckboxes[i] ? (formData.get(`ow[][${i}]`) === 'on') : false // Precisa ajustar a forma de pegar o 'on'
+                         // Alternativa mais robusta seria iterar pelos inputs e checkboxes juntos
+                     });
+                 }
+             });
+               // Correção para pegar o estado dos checkboxes OW:
+                partsData.length = 0; // Limpa antes de repopular corretamente
+                const partEntries = sawForm.querySelectorAll('.part-entry');
+                partEntries.forEach(entry => {
+                    const codeSelect = entry.querySelector('select[name="part_code[]"]');
+                    const defectInput = entry.querySelector('input[name="defect[]"]');
+                    const owCheckbox = entry.querySelector('input[name="ow[]"]'); // O checkbox dentro da entry
+    
+                    if (codeSelect && codeSelect.value && defectInput) {
+                        partsData.push({
+                            code: codeSelect.value,
+                            defect: defectInput.value,
+                            ow: owCheckbox ? owCheckbox.checked : false // Pega o estado 'checked'
+                        });
+                    }
+                });
+    
+    
+             const data = {
+                 os: osOriginal,
+                 category: categorySelect.value,
+                 observations: observations.value.trim(),
+                 parts: partsData
+             };
+    
+             if (partsData.length === 0) {
+                  alert("Adicione pelo menos uma peça.");
+                  return;
+              }
+    
+    
+             disableSubmitButton(sawForm.querySelector('button[type="submit"]'), null, true); // Desabilita botão (loading não implementado aqui)
+    
+             try {
+                 const response = await fetch('/api/submit_saw', {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify(data)
+                 });
+                 const result = await response.json();
+                 alert(result.message || (result.status === 'success' ? "Sucesso" : "Erro")); // Mostra mensagem
+    
+                 if (result.status === 'success') {
+                    // Limpa tudo e volta pro menu
+                    sawInitialForm.reset();
+                    sawError.classList.add('hidden');
+                    disableSubmitButton(sawSubmitBtn, sawSubmitLoading, false);
+                    transitionToCard(sawFormCard, mainMenu);
+                 }
+             } catch (error) {
+                 console.error("Erro ao submeter SAW:", error);
+                 alert(`Erro ao enviar solicitação: ${error.message}`);
+             } finally {
+                  disableSubmitButton(sawForm.querySelector('button[type="submit"]'), null, false); // Reabilita botão
+             }
+         });
+    
+        // Submissão Requisitar Peças (Pedir OS) (Agora chama a função reutilizável)
+        requisicaoOsForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const osNumber = requisicaoOsNumberInput.value.trim();
+            if (!osNumber) return;
+    
+            // *** CHAMA A NOVA FUNÇÃO ***
+            await prepararFormRequisicao(osNumber);
+        });
+    
+        // Submissão Requisitar Peças (Formulário Final)
+        requisicaoForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            console.log('Requisição Final Submit'); // Debug
+    
+            if (!currentRequisitionData || !currentRequisitionOS) { /* ... (validação como antes) ... */ return; }
+            requisicaoPartsError.classList.add('hidden');
+            requisicaoSubmitError.classList.add('hidden');
+            requisicaoUserSelect.classList.remove('border-red-500');
+            // (O código de validação foi omitido para brevidade, mas deve ser mantido como antes)
+              if (!currentRequisitionData || !currentRequisitionOS) {
+                    console.error('Dados da requisição não encontrados:', { currentRequisitionData, currentRequisitionOS });
+                    requisicaoSubmitError.textContent = "Erro: Dados da requisição não encontrados.";
+                    requisicaoSubmitError.classList.remove('hidden');
+                    return;
+                }
+                requisicaoPartsError.classList.add('hidden');
+                requisicaoSubmitError.classList.add('hidden');
+                requisicaoUserSelect.classList.remove('border-red-500');
+    
+    
+            const selectedUser = requisicaoUserSelect.value;
+            const finalParts = [];
+            const partRows = requisicaoPartsToRequestList.querySelectorAll('.part-entry');
+            let hasInvalidQuantity = false;
+    
+            partRows.forEach(row => { /* ... (lógica de coletar peças como antes) ... */ });
+             // (O código de coletar peças foi omitido para brevidade, mas deve ser mantido como antes)
+             partRows.forEach(row => {
+                    const code = row.dataset.code;
+                    const keyname = row.dataset.keyname;
+                    const quantityInput = row.querySelector('input[data-role="quantity"]');
+                    const qty = parseInt(quantityInput.value, 10);
+    
+                    if (isNaN(qty) || qty <= 0) {
+                        quantityInput.classList.add('border-red-500');
+                        hasInvalidQuantity = true;
+                    } else {
+                        quantityInput.classList.remove('border-red-500');
+                        finalParts.push({ codigo: code, quantidade: qty, keyname: keyname });
+                    }
+                });
+    
+    
+            // Validações
+            if (hasInvalidQuantity) { /* ... show error ... */ return; }
+            if (finalParts.length === 0) { /* ... show error ... */ return; }
+            if (!selectedUser) { /* ... show error ... */ return; }
+            // (O código das validações finais foi omitido para brevidade, mas deve ser mantido como antes)
+             if (hasInvalidQuantity) {
+                    requisicaoPartsError.textContent = "Verifique as quantidades. Devem ser números maiores que zero.";
+                    requisicaoPartsError.classList.remove('hidden');
+                    return;
+                }
+                if (finalParts.length === 0) {
+                    requisicaoPartsError.textContent = "Nenhuma peça selecionada para requisição.";
+                    requisicaoPartsError.classList.remove('hidden');
+                    return;
+                }
+                if (!selectedUser) {
+                    requisicaoSubmitError.textContent = "Selecione um usuário responsável.";
+                    requisicaoSubmitError.classList.remove('hidden');
+                    requisicaoUserSelect.classList.add('border-red-500');
+                    return;
+                }
+    
+    
+            const os = currentRequisitionOS;
+    
+            // Verifica tarefa ativa ANTES de criar o elemento
+            if (activeRequisitionTasks.has(os)) {
+                const task = activeRequisitionTasks.get(os);
+                console.warn(`Requisição para OS ${os} já está em andamento. Status:`, task.element.querySelector('.task-status').textContent);
+                 requisicaoSubmitError.textContent = `Requisição para OS ${os} já está em andamento.`;
+                 requisicaoSubmitError.classList.remove('hidden');
+                // Destaca a tarefa existente
+                if (task.element) {
+                     task.element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                     task.element.classList.add('animate-pulse');
+                     setTimeout(() => task.element.classList.remove('animate-pulse'), 1500);
+                }
+                return; // Impede nova submissão
+            }
+    
+    
+            const submissionData = {
+                usuario_selecionado: selectedUser,
+                pecas_final: finalParts,
+                aviso_status_os_original: currentRequisitionData.aviso_status_os || false,
+                parts_to_remove_original: currentRequisitionData.parts_to_remove || [],
+                // os: os // OS será pega da URL no backend agora
+            };
+    
+            // Cria elemento visual e adiciona ao mapa ANTES da chamada fetch
+            const taskElement = createRequisitionTaskElement(os);
+            requisitionTasksContainer.prepend(taskElement);
+            activeRequisitionTasks.set(os, { element: taskElement, data: submissionData }); // Guarda dados para retry
+    
+            // Transiciona DE VOLTA para a tela de pedir OS APÓS iniciar
+            transitionToCard(requisicaoFormCard, requisicaoOsCard);
+            requisicaoOsForm.reset(); // Limpa form inicial
+            requisicaoOsError.classList.add('hidden'); // Esconde erro inicial
+    
+            // Limpa estado atual do formulário que acabou de ser submetido
+             currentRequisitionData = null;
+             currentRequisitionOS = null;
+    
+            // Envia para o backend
+            disableSubmitButton(requisicaoFormSubmitBtn, requisicaoFormSubmitLoading, true); // Desabilita o botão que foi clicado
+            try {
+                const response = await fetch(`/api/requisicoes/${os}/executar`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(submissionData),
+                    credentials: 'include'
+                });
+                const result = await response.json();
+                if (result.success) {
+                    updateRequisitionTaskStatus(taskElement, 'processing', 'Processando requisição...');
+                } else {
+                     // A tarefa já foi criada, então atualiza com falha
+                    updateRequisitionTaskStatus(taskElement, 'failed', result.message || 'Falha ao iniciar no backend');
+                }
+            } catch (error) {
+                console.error(`Erro de comunicação ao enviar requisição OS ${os}:`, error);
+                 // Atualiza tarefa com falha
+                updateRequisitionTaskStatus(taskElement, 'failed', `Erro de comunicação: ${error.message}`);
+            } finally {
+                 // NÃO reabilita o botão aqui, pois já navegou para outra tela
+                 // disableSubmitButton(requisicaoFormSubmitBtn, requisicaoFormSubmitLoading, false);
+            }
+        });
+    
+        // Gerenciar Usuários (Listeners como antes)
+        manageUserDeleteBtn.addEventListener('click', async () => { /* ... (como antes) ... */ });
+        addUserForm.addEventListener('submit', async (e) => { /* ... (como antes) ... */ });
+        // (O código dos listeners de gerenciar usuários foi omitido para brevidade, mas deve ser mantido como antes)
+          // Deletar Usuário
+            manageUserDeleteBtn.addEventListener('click', async () => {
+                const selectedUser = manageUserSelect.value;
+                if (!selectedUser) {
+                    manageUserDeleteFeedback.textContent = 'Selecione um usuário.';
+                    manageUserDeleteFeedback.className = 'text-sm mt-2 text-yellow-600';
+                    return;
+                }
+                if (!confirm(`Deletar "${selectedUser}"?`)) return;
+    
+                manageUserDeleteFeedback.textContent = 'Deletando...';
+                manageUserDeleteFeedback.className = 'text-sm mt-2 text-gray-600';
+                manageUserDeleteBtn.disabled = true;
+    
+                try {
+                    const response = await fetch(`/api/usuarios/${encodeURIComponent(selectedUser)}`, { method: 'DELETE' });
+                    const result = await response.json();
+                    if (response.ok && result.success) {
+                        manageUserDeleteFeedback.textContent = result.message || 'Deletado!';
+                        manageUserDeleteFeedback.className = 'text-sm mt-2 text-green-600';
+                        await populateUserDropdown();
+                    } else {
+                        throw new Error(result.message || `Falha (status: ${response.status})`);
+                    }
+                } catch (error) {
+                     manageUserDeleteFeedback.textContent = `Erro: ${error.message}`;
+                     manageUserDeleteFeedback.className = 'text-sm mt-2 text-red-600';
+                     manageUserDeleteBtn.disabled = false;
+                }
+            });
+    
+            // Cadastrar Novo Usuário
+            addUserForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const nome = addUserNameInput.value.trim();
+                const user = addUserLoginInput.value.trim();
+                const senha = addUserPasswordInput.value;
+                if (!nome || !user || !senha) {
+                    addUserFeedback.textContent = 'Todos os campos são obrigatórios.';
+                    addUserFeedback.className = 'text-sm mt-2 text-yellow-600';
+                    return;
+                }
+                const userData = { nome, user, senha };
+    
+                disableSubmitButton(addUserSubmitBtn, addUserSubmitLoading, true);
+                addUserFeedback.textContent = 'Cadastrando...';
+                addUserFeedback.className = 'text-sm mt-2 text-gray-600';
+    
+                try {
+                     const response = await fetch('/api/usuarios', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(userData)
+                    });
+                    const result = await response.json();
+                     if (response.ok && result.success) {
+                        addUserFeedback.textContent = result.message || 'Cadastrado!';
+                        addUserFeedback.className = 'text-sm mt-2 text-green-600';
+                        addUserForm.reset();
+                        await populateUserDropdown();
+                    } else {
+                         throw new Error(result.message || `Falha (status: ${response.status})`);
+                     }
+                } catch (error) {
+                     addUserFeedback.textContent = `Erro: ${error.message}`;
+                     addUserFeedback.className = 'text-sm mt-2 text-red-600';
+                } finally {
+                     disableSubmitButton(addUserSubmitBtn, addUserSubmitLoading, false);
+                }
+            });
+    
+    
+        // Listener para Ações nas Tarefas (Delete/Retry)
+        // Adiciona listeners aos containers PAI das tarefas
+        syncTasksContainer.addEventListener('click', (event) => {
+            const target = event.target;
+            const deleteButton = target.closest('.delete-sync-task'); // Usa classe específica
+            if (deleteButton) {
+                const taskElement = target.closest('.task-item');
+                if (taskElement) {
+                    const os = taskElement.dataset.os;
+                    taskElement.remove();
+                    activeSyncTasks.delete(os);
+                    console.log(`Tarefa sync OS ${os} removida.`);
+                }
+            }
+        });
+    
+        requisitionTasksContainer.addEventListener('click', (event) => {
+            const target = event.target;
+            const taskElement = target.closest('.task-item');
+            if (!taskElement) return;
+    
+            const os = taskElement.dataset.os;
+            const deleteButton = target.closest('.delete-req-task'); // Classe específica
+            const retryButton = target.closest('.retry-req-task');   // Classe específica
+    
+            if (deleteButton) {
+                taskElement.remove();
+                activeRequisitionTasks.delete(os);
+                console.log(`Tarefa req OS ${os} removida.`);
+            } else if (retryButton) {
+                console.log(`Tentando novamente requisição OS ${os}`);
+                const taskInfo = activeRequisitionTasks.get(os);
+                if (taskInfo && taskInfo.data) {
+                    updateRequisitionTaskStatus(taskElement, 'processing', 'Reenviando...');
+                    // Reenvia os dados guardados
+                    fetch(`/api/requisicoes/${os}/executar`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(taskInfo.data), // Usa dados guardados
+                        credentials: 'include'
+                    })
+                    .then(response => response.json())
+                    .then(result => {
+                        if (!result.success) {
+                            updateRequisitionTaskStatus(taskElement, 'failed', result.message || 'Falha ao reenviar');
+                        } // O sucesso será atualizado pelo socket
+                    })
+                    .catch(error => {
+                        updateRequisitionTaskStatus(taskElement, 'failed', `Erro comm: ${error.message}`);
+                    });
+                } else {
+                    updateRequisitionTaskStatus(taskElement, 'failed', 'Erro: dados retry não encontrados.');
+                }
+            }
+        });
+    
+    
+        // Lógica de Dependência dos Toggles Vincular OS
+        toggleGerarOs.addEventListener('change', () => {
+            // (Lógica como fornecida anteriormente)
+            const isGerarOsChecked = toggleGerarOs.checked;
+            toggleSincronizar.disabled = !isGerarOsChecked;
+            labelSincronizar.classList.toggle('opacity-50', !isGerarOsChecked);
+            labelSincronizar.classList.toggle('pointer-events-none', !isGerarOsChecked);
+            if (!isGerarOsChecked) toggleSincronizar.checked = false;
+    
+            toggleRequisitar.disabled = !isGerarOsChecked;
+            labelRequisitar.classList.toggle('opacity-50', !isGerarOsChecked);
+            labelRequisitar.classList.toggle('pointer-events-none', !isGerarOsChecked);
+            if (!isGerarOsChecked) toggleRequisitar.checked = false;
+        });
+    
+        // Submissão Vincular/Finalizar OS (Com encadeamento)
+        vincularOsForm.addEventListener('submit', async (e) => {
+            // (Lógica como fornecida na resposta anterior, usando as novas funções)
+            e.preventDefault();
+            vincularOsError.classList.add('hidden');
+            vincularOsSuccess.classList.add('hidden');
+    
+            const osNumero = vincularOsNumberInput.value.trim();
+            const gerarOs = toggleGerarOs.checked;
+            const finalizarOs = toggleFinalizar.checked;
+            const sincronizarAposGerar = toggleSincronizar.checked;
+            const requisitarAposGerar = toggleRequisitar.checked;
+    
+            if (finalizarOs && !osNumero) { /* ... erro ... */ return; }
+            if (!gerarOs && !finalizarOs) { /* ... erro ... */ return; }
+             if (finalizarOs && !osNumero) {
+                vincularOsError.textContent = "O número da OS é obrigatório para finalizar.";
+                vincularOsError.classList.remove('hidden');
+                return;
+            }
+            if (!gerarOs && !finalizarOs) {
+                 vincularOsError.textContent = "Selecione Gerar nova OS ou Finalizar OS atual.";
+                 vincularOsError.classList.remove('hidden');
+                 return;
+            }
+    
+    
+            disableSubmitButton(vincularOsSubmitBtn, vincularOsSubmitLoading, true);
+    
+            const payload = { gerar_os: gerarOs, finalizar: finalizarOs, numero_os: osNumero };
+    
+            try {
+                const response = await fetch('/api/gspn/gerenciar_os', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+    
+                if (result.sucesso) {
+                    const novaOsGerada = result.os_gspn;
+                    let feedbackMsg = "Operação concluída!";
+                    if (novaOsGerada) feedbackMsg += ` Nova OS: ${novaOsGerada}.`;
+    
+                    vincularOsSuccess.textContent = feedbackMsg;
+                    vincularOsSuccess.classList.remove('hidden');
+                    vincularOsForm.reset(); // Limpa o form aqui
+                    // Reseta estado dos toggles dependentes
+                    toggleSincronizar.disabled = true;
+                    labelSincronizar.classList.add('opacity-50', 'pointer-events-none');
+                    toggleRequisitar.disabled = true;
+                    labelRequisitar.classList.add('opacity-50', 'pointer-events-none');
+    
+                    let transicaoOcorrera = false; // Flag para saber se navegou
+    
+                    if (gerarOs && novaOsGerada) {
+                        if (requisitarAposGerar) {
+                            await prepararFormRequisicao(osNumero); // Chama preparação (navega internamente)
+                            transicaoOcorrera = true; // A navegação ocorre dentro de prepararForm
+                        }
+                         // Sincronizar DEPOIS de verificar requisição, para não atrapalhar a navegação
+                         if (sincronizarAposGerar && !transicaoOcorrera) { // Só inicia sync se não foi para o form de req
+                            await iniciarSincronizacao(novaOsGerada);
+                             // Decide para onde ir APÓS iniciar a sincronização
+                             transitionToCard(vincularOsCard, syncPartsCard);
+                             transicaoOcorrera = true;
+                         }
+                    }
+    
+                     // Se nenhuma transição ocorreu (nem requisição, nem sincronização)
+                     if (!transicaoOcorrera) {
+                          // Volta para o menu principal após um delay
+                          setTimeout(() => {
+                              vincularOsSuccess.classList.add('hidden');
+                              transitionToCard(vincularOsCard, mainMenu);
+                          }, 2500);
+                     } else {
+                         // Se ocorreu transição, apenas esconde a msg de sucesso do card atual
+                          setTimeout(() => {
+                              vincularOsSuccess.classList.add('hidden');
+                          }, 2500);
+                     }
+    
+    
+                } else {
+                    vincularOsError.textContent = result.mensagem || "Erro desconhecido.";
+                    vincularOsError.classList.remove('hidden');
+                     disableSubmitButton(vincularOsSubmitBtn, vincularOsSubmitLoading, false); // Reabilita em caso de erro
+                }
+            } catch (error) {
+                console.error("Erro ao gerenciar OS:", error);
+                vincularOsError.textContent = `Erro de comunicação: ${error.message}`;
+                vincularOsError.classList.remove('hidden');
+                 disableSubmitButton(vincularOsSubmitBtn, vincularOsSubmitLoading, false); // Reabilita em caso de erro
+            } finally {
+                // O botão só é reabilitado explicitamente em caso de erro agora,
+                // pois em caso de sucesso a navegação pode ocorrer. Se a navegação
+                // não ocorrer (caso sem sync/req), o botão fica desabilitado até
+                // o usuário voltar e interagir novamente. Se precisar reabilitar
+                // sempre, adicione aqui fora do catch.
+                 // Se nenhuma transição ocorreu, reabilitamos o botão após o timeout também
+                // if (!transicaoOcorrera) { // Esta variável não existe aqui, precisa reavaliar
+                     // disableSubmitButton(vincularOsSubmitBtn, vincularOsSubmitLoading, false);
+                // }
+                 // Vamos reabilitar o botão em caso de erro ou sucesso SEM navegação posterior
+                 if (!vincularOsSuccess.classList.contains('hidden') && !document.getElementById('requisicaoFormCard').classList.contains('visible') && !document.getElementById('syncPartsCard').classList.contains('visible')) {
+                     // Se a mensagem de sucesso está visível E não navegamos para os outros cards
+                     //disableSubmitButton(vincularOsSubmitBtn, vincularOsSubmitLoading, false); // Reabilitar depois do timeout?
+                 } else if (!vincularOsError.classList.contains('hidden')) {
+                      disableSubmitButton(vincularOsSubmitBtn, vincularOsSubmitLoading, false); // Reabilitar se deu erro
+                 }
+            }
+        });
+    
+        // Status Login GSPN (Listeners como antes)
+        gspnStatusText.addEventListener('click', () => gspnLoginDropdown.classList.toggle('visible'));
+        gspnReloadBtn.addEventListener('click', fetchGSPNLoginStatus);
+    
+        // --- INICIALIZAÇÃO ---
+        window.addEventListener('load', fetchGSPNLoginStatus); // Carrega status GSPN ao iniciar
+    
+    </script>
+</body>
+</html>

@@ -1,0 +1,109 @@
+import requests
+import pickle
+import os
+
+# URLs do sistema COS
+URL_LOGIN = "http://192.168.25.131:8080/COS_CSO/Entrar.jsp"  # URL correta!
+URL_TESTE = "http://192.168.25.131:8080/COS_CSO/Principal.jsp"  # Página autenticada
+COOKIES_PATH = r"C:\Users\Gestão MX\Documents\AutoMX\login do cos\cookies.pkl"
+
+# Credenciais do usuário (substituir pelos reais)
+CREDENCIAIS = {
+    "Usuario": "lucianooliveira",
+    "Senha": "nucleo_2022"
+}
+
+# Cabeçalhos simulando uma requisição AJAX legítima
+HEADERS = {
+    "Accept": "*/*",
+    "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+    "Connection": "keep-alive",
+    "Referer": "http://192.168.25.131:8080/COS_CSO/BuscarOrdemServico.jsp",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+    "X-Requested-With": "XMLHttpRequest",
+    "Content-Type": "text/plain; charset=ISO-8859-1"
+}
+
+
+def carregar_sessao():
+    print('inciando carregar sessão')
+    """Tenta carregar cookies salvos para autenticação."""
+    session = requests.Session()
+    
+    if os.path.exists(COOKIES_PATH):
+        try:
+            with open(COOKIES_PATH, "rb") as f:
+                cookies = pickle.load(f)
+                session.cookies.update(cookies)
+            #print("🔄 Usando cookies salvos para autenticação...")
+            #print("🟡 Cookies carregados:", session.cookies.get_dict())
+            return session
+        except Exception as e:
+            print(f"❌ Erro ao carregar cookies: {e}")
+    else:
+        fazer_login(session)
+        carregar_sessao() 
+        print("⚠️ Nenhum cookie válido encontrado! A autenticação pode falhar.")
+    return session
+
+def fazer_login(session):
+    """Realiza login no sistema e salva os cookies para futuras execuções."""
+    
+    # URL base e parâmetros da requisição
+    URL_LOGIN = "http://192.168.25.131:8080/COS_CSO/LoginOut"
+    PARAMS = {
+        "Acao": "Logar",
+        "Usuario": "lucianooliveira",
+        "Senha": "nucleo_2022"
+    }
+    
+    # Cabeçalhos replicando a requisição original
+    HEADERS = {
+        "Host": "192.168.25.131:8080",
+        "Connection": "keep-alive",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+        "Accept": "*/*",
+        "X-Requested-With": "XMLHttpRequest",
+        "Referer": "http://192.168.25.131:8080/COS_CSO/Entrar.jsp",
+        "Accept-Encoding": "gzip, deflate",
+        "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8"
+    }
+    
+    # Caminho para salvar os cookies (ajuste conforme necessário)
+    
+    #URL_TESTE = "http://192.168.25.131:8080/COS_CSO/alguma_pagina_autenticada"  # Ajuste para uma página real
+
+    # Enviar a requisição de login com GET
+    response = session.get(URL_LOGIN, params=PARAMS, headers=HEADERS, allow_redirects=False)
+
+    #print("🔍 Resposta do servidor no login:", response.status_code)
+    #print("🔍 Cabeçalhos da resposta:", response.headers)
+    #print("🔍 Cookies recebidos:", session.cookies.get_dict())
+
+    # Verificar se os cookies foram definidos corretamente
+    if "JSESSIONID" in session.cookies.get_dict():
+        print("✅ Cookie de sessão recebido! Testando se o login foi bem-sucedido...")
+
+        # Testar se conseguimos acessar uma página autenticada
+        response_test = session.get(URL_TESTE, headers=HEADERS, allow_redirects=False)
+        print("🔍 Resposta do servidor no teste:", response_test.text)
+        if "PaginaInicial.jsp" in response_test.text and "Acesse o site novamente" not in response_test.text:
+            print("✅ Login confirmado! Salvando cookies...")
+
+            # Criar pasta se não existir
+            os.makedirs(os.path.dirname(COOKIES_PATH), exist_ok=True)
+
+            # Salvar cookies
+            with open(COOKIES_PATH, "wb") as f:
+                pickle.dump(session.cookies, f)
+
+            return session
+        else:
+            print("❌ Login falhou! O servidor não autenticou o acesso.")
+    else:
+        print("❌ Nenhum cookie de sessão foi recebido. O login pode ter falhado.")
+
+    return None
+
+session = requests.Session()
+fazer_login(session)
